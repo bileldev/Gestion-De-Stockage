@@ -17,23 +17,34 @@ export default async function EmployeeDashboard() {
     redirect('/auth/login')
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  let profile = null
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+    profile = data
+  } catch (error) {
+    console.log('Profile not found, allowing access with user data')
+  }
 
-  if (!profile) {
-    redirect('/auth/login')
+  // If profile doesn't exist yet, use user data
+  const displayProfile = profile || {
+    id: user.id,
+    first_name: user.user_metadata?.first_name || 'User',
+    last_name: user.user_metadata?.last_name || '',
+    email: user.email,
+    role: 'employee',
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <EmployeeHeader profile={profile} />
+      <EmployeeHeader profile={displayProfile} />
       
       <main className="max-w-7xl mx-auto p-4 md:p-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">Bienvenue, {profile.first_name}</h1>
+          <h1 className="text-3xl font-bold">Bienvenue, {displayProfile.first_name}</h1>
           <p className="text-muted-foreground">Gérez votre inventaire et vos opérations</p>
         </div>
 

@@ -13,16 +13,9 @@ export default async function Home() {
       redirect('/auth/login')
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role === 'admin') {
-      redirect('/dashboard/admin')
-    }
-
+    // If user exists, redirect to employee dashboard
+    // The profile may not exist yet (during account creation)
+    // so we just redirect to the employee dashboard which will handle it
     redirect('/dashboard/employee')
   } catch (error) {
     console.error('[v0] Home page error:', error)

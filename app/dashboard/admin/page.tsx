@@ -19,12 +19,19 @@ export default async function AdminDashboard() {
     redirect('/auth/login')
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  let profile = null
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+    profile = data
+  } catch (error) {
+    console.log('Profile not found')
+  }
 
+  // Only allow admins
   if (!profile || profile.role !== 'admin') {
     redirect('/dashboard/employee')
   }
