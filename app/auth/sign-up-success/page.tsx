@@ -11,8 +11,6 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-export const revalidate = 0
-
 export default function Page() {
   const router = useRouter()
 

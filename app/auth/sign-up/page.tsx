@@ -15,8 +15,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 
-export const revalidate = 0
-
 export default function Page() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
