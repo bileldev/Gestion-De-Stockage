@@ -51,6 +51,18 @@ export async function updateSession(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser()
 
+    // Redirect authenticated users away from auth pages to dashboard
+    if (
+      user &&
+      request.nextUrl.pathname.startsWith('/auth') &&
+      request.nextUrl.pathname !== '/auth/callback' &&
+      request.nextUrl.pathname !== '/auth/error'
+    ) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard/employee'
+      return NextResponse.redirect(url)
+    }
+
     if (
       // if the user is not logged in and the app path, in this case, /protected, is accessed, redirect to the login page
       request.nextUrl.pathname.startsWith('/protected') &&
