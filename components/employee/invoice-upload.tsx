@@ -29,6 +29,46 @@ export default function InvoiceUpload() {
     }
   }
 
+  const extractInvoiceData = (text: string) => {
+    // Extract invoice number
+    const invoiceMatch = text.match(/(?:Facture|FV|Numéro|Invoice)\s*(?:Numéro)?\s*[\s:]*([A-Z0-9\/]+)/i)
+    const invoiceNumber = invoiceMatch?.[1] || `INV-${Date.now()}`
+
+    // Extract total amount (look for "Total" patterns)
+    const totalMatch = text.match(/Total\s*(?:HT|TTC|:)?\s*([\d,.\s]+)/)
+    const totalAmount = totalMatch ? parseFloat(totalMatch[1].replace(/\s+/g, '').replace(',', '.')) : 0
+
+    // Extract supplier name (usually after company info lines)
+    const supplierMatch = text.match(/(?:STE|S\.A\.R\.L|C\.F\.|ITAP|STIF|Eureka|Partner)[^.]*/)
+    const supplierName = supplierMatch?.[0]?.trim() || 'Fournisseur Inconnu'
+
+    // Extract date
+    const dateMatch = text.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})/i)
+    const invoiceDate = dateMatch?.[1] || new Date().toISOString()
+
+    // Extract line items
+    const lineItems: any[] = []
+    const itemRegex = /([^\n]*?)\s+([\d,]+)\s+(?:\d+%)?[\s\d,]*?([\d,]+)\s*(?:TND|DT)?/g
+    let itemMatch
+    while ((itemMatch = itemRegex.exec(text)) !== null) {
+      if (itemMatch[1].length > 5) { // Filter out noise
+        lineItems.push({
+          description: itemMatch[1].trim(),
+          quantity: parseFloat(itemMatch[2].replace(/\s+/g, '').replace(',', '.')),
+          amount: parseFloat(itemMatch[3].replace(/\s+/g, '').replace(',', '.')),
+        })
+      }
+    }
+
+    return {
+      invoiceNumber,
+      supplierName,
+      totalAmount,
+      invoiceDate,
+      lineItems,
+    }
+  }
+
   const handleUpload = async () => {
     if (!file) {
       toast.error('Veuillez sélectionner une facture')
@@ -43,25 +83,44 @@ export default function InvoiceUpload() {
       })
 
       const extractedText = result.data.text
+      console.log('[v0] Extracted text:', extractedText)
+
+      // Extract structured data
+      const invoiceData = extractInvoiceData(extractedText)
+      console.log('[v0] Parsed invoice data:', invoiceData)
 
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Utilisateur non connecté')
 
+      // Find supplier by name
+      let supplierId = null
+      if (invoiceData.supplierName !== 'Fournisseur Inconnu') {
+        const { data: supplier } = await supabase
+          .from('suppliers')
+          .select('id')
+          .ilike('name', `%${invoiceData.supplierName.split(' ')[0]}%`)
+          .single()
+        supplierId = supplier?.id
+      }
+
       // Create invoice record
-      const invoiceNumber = `INV-${Date.now()}`
       const { error } = await supabase.from('invoices').insert({
-        invoice_number: invoiceNumber,
-        supplier_id: '00000000-0000-0000-0000-000000000000', // Placeholder
+        invoice_number: invoiceData.invoiceNumber,
+        supplier_id: supplierId || '00000000-0000-0000-0000-000000000000',
+        total_amount: invoiceData.totalAmount,
         status: 'pending',
         ocr_data: {
           extracted_text: extractedText,
+          supplier_name: invoiceData.supplierName,
+          invoice_date: invoiceData.invoiceDate,
+          line_items: invoiceData.lineItems,
           timestamp: new Date().toISOString(),
         },
       })
 
       if (error) throw error
 
-      toast.success('Facture uploadée avec succès. En attente d\'approbation')
+      toast.success(`Facture ${invoiceData.invoiceNumber} uploadée. En attente d'approbation`)
       setFile(null)
       setPreviewUrl('')
     } catch (error: any) {
