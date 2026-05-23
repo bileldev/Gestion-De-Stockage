@@ -9,9 +9,9 @@ export async function updateSession(request: NextRequest) {
 
     // Check if environment variables are set
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
-    if (!supabaseUrl || !supabaseAnonKey) {
+    if (!supabaseUrl || !supabasePublishableKey) {
       console.error('[v0] Missing Supabase environment variables')
       return supabaseResponse
     }
@@ -20,7 +20,7 @@ export async function updateSession(request: NextRequest) {
     // variable. Always create a new one on each request.
     const supabase = createServerClient(
       supabaseUrl,
-      supabaseAnonKey,
+      supabasePublishableKey,
       {
         cookies: {
           getAll() {
